@@ -39,6 +39,8 @@
 #include "table/dead-nonce-list.hpp"
 #include "table/network-region-table.hpp"
 
+#include "ns3/ndnSIM/model/cs/ndn-content-store.hpp"
+
 namespace nfd {
 
 namespace fw {
@@ -173,6 +175,24 @@ public: // forwarding entrypoints and tables
     return m_networkRegionTable;
   }
 
+public: // allow enabling ndnSIM content store (will be removed in the future)
+  void
+  setCsFromNdnSim(ns3::Ptr<ns3::ndn::ContentStore> cs)
+  {
+    m_csFromNdnSim = cs;
+  }
+
+public:
+  /** \brief trigger before PIT entry is satisfied
+   *  \sa Strategy::beforeSatisfyInterest
+   */
+  signal::Signal<Forwarder, pit::Entry, Face, Data> beforeSatisfyInterest;
+
+  /** \brief trigger before PIT entry expires
+   *  \sa Strategy::beforeExpirePendingInterest
+   */
+  signal::Signal<Forwarder, pit::Entry> beforeExpirePendingInterest;
+
 PUBLIC_WITH_TESTS_ELSE_PRIVATE: // pipelines
   /** \brief incoming Interest pipeline
    */
@@ -217,6 +237,12 @@ PUBLIC_WITH_TESTS_ELSE_PRIVATE: // pipelines
   VIRTUAL_WITH_TESTS void
   onInterestFinalize(const shared_ptr<pit::Entry>& pitEntry, bool isSatisfied,
                      time::milliseconds dataFreshnessPeriod = time::milliseconds(-1));
+
+  VIRTUAL_WITH_TESTS void
+  onTracingInterest(const Face& inFace, const shared_ptr<pit::Entry>& pitEntry, const Interest& interest);
+
+  VIRTUAL_WITH_TESTS void
+  onPullInterest(const Face& inFace, const shared_ptr<pit::Entry>& pitEntry, const Interest& interest);
 
   /** \brief incoming Data pipeline
    */
@@ -290,6 +316,9 @@ private:
   StrategyChoice     m_strategyChoice;
   DeadNonceList      m_deadNonceList;
   NetworkRegionTable m_networkRegionTable;
+  shared_ptr<Face>   m_csFace;
+
+  ns3::Ptr<ns3::ndn::ContentStore> m_csFromNdnSim;
 
   // allow Strategy (base class) to enter pipelines
   friend class fw::Strategy;
